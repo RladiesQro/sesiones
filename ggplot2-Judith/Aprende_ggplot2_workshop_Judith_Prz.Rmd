@@ -1,0 +1,336 @@
+---
+VignetteBuilder: BiocStyle
+title: "Aprender ggplot2"
+author: "Judith Pérez-Granado"
+affiliation: IMIM-UPF
+email: jperez2@imim.es
+
+abstract: |
+  Este workshop organizado por R-ladies Querétaro versa sobre el funcionamiento del paquetes de R ggplot2
+  
+output:
+  BiocStyle::html_document:    
+    toc_float: true    
+
+---
+
+```{r setup, include=FALSE}
+# set working directory to source file location
+setwd(dirname(rstudioapi::getActiveDocumentContext()$path))
+knitr::opts_chunk$set(message=FALSE, warning=TRUE, fig.cap = "")
+```
+
+```{r style, results = 'asis', echo = FALSE}
+# define the style
+BiocStyle::markdown()
+```
+
+```{r}
+#cargamos los paquetes que vamos a necesitar
+# install.packages("ggplot2")
+library(ggplot2)
+library(dplyr)
+```
+
+# Dataset
+
+```{r}
+# cargamos el dataset
+heroes_info <-read.csv("heroes_information.csv", row.names = 1) 
+
+#exploramos el dataset
+head(heroes_info)
+str(heroes_info)
+
+races <- c("Cyborg", "Kryptonian", "Human", "Mutant")
+df <- subset(heroes_info, Race %in% races & Height > 0 & Weight > 0 & Eye.color != "" & Gender != "-" & Alignment != "-")
+```
+
+# Elementos de ggplot2
+
+## Data + aes() + geom_*()
+
+### geom_bar() + geom_text()
+
+Ejemplo 1: de qué género son los héroes de nuestro dataset?
+
+```{r}
+ggplot(df, aes(Gender)) + 
+  geom_bar()
+
+gender_count <- df %>%
+  count(Gender)
+
+ggplot(df, aes(Gender)) + 
+  geom_bar() + 
+  geom_text(data = gender_count, 
+            aes(Gender, y = 15, label = n), 
+            color = "white")
+```
+
+Ejemplo 2: qué género es más confiable?
+
+```{r}
+ggplot(df, aes(Gender, fill=factor(Alignment))) +
+  geom_bar(stat="count", color="black")
+
+ggplot(df, aes(Gender, fill=factor(Alignment))) +
+  geom_bar(stat="count", color="black", 
+           position="dodge")
+
+ggplot(df, aes(Gender, fill=factor(Alignment))) +
+  geom_bar(stat="count", color="black", 
+           position="fill")
+```
+
+### geom_density()
+
+Ejemplo 3. Cómo se distribuye la altura de nuestros héroes? 
+
+```{r}
+ggplot(df, aes(Height)) +
+  geom_density()
+```
+
+**Ejercicios**
+
+Ejercicio 1. De qué raza son nuestros héroes?
+
+Ejercicio 2. Qué raza es más confiable? 
+
+Ejericicio 3.  Cómo se distribuye la altura de nuestros héroes según la raza?
+
+### geom_point() + geom_smooth()
+
+Ejemplo 4. Existe relación entre altura y peso según la raza?
+
+```{r}
+ggplot(df, aes(Weight, Height, color = Race)) + 
+  geom_point()
+
+ggplot(df, aes(Weight, Height, color = Race)) + 
+  geom_point() +
+  geom_smooth(method = "lm")
+
+ggplot(df, aes(Weight, Height)) + 
+  geom_point(aes(color = Race)) +
+  geom_smooth(method = "lm")
+
+```
+
+### geom_boxplot() + geom_violin()
+
+Ejemplo 5: Cuál es la altura mediana de cada género?
+
+```{r}
+ggplot(df, aes(Gender, Height))+
+  geom_boxplot() 
+
+ggplot(df, aes(Gender, Height))+
+  geom_violin()
+
+```
+
+## Scales
+
+Ejemplo 6. Cuál es la altura mediana de cada género según la raza?
+
+```{r}
+library(RColorBrewer)
+
+ggplot(df, aes(Gender, Height, fill = Race))+
+  geom_boxplot() + 
+  scale_fill_brewer(palette="Pastel1", 
+                     name="Raza") +
+  scale_y_continuous(name="Altura (cm)",
+                     limits=c(0,400)) +
+  xlab("Género")
+```
+
+**Ejercicios**
+
+Ejercicio 4. Existe relación entre altura y peso según el alineamiento del héroe?
+
+Ejercicio 5: Cuál es el peso medio de cada raza según el género? 
+
+Ejercicio 6. Arreglen ejes, leyendas, etc.
+
+
+## Stats
+
+Ejemplo 7. Cuál es la media de la altura y su ES según la raza del héroe?
+
+```{r}
+ggplot(df, aes(Race, Height)) + 
+  geom_jitter(aes(color=Race)) +
+  stat_summary(fun=mean, geom="point", size=2) +
+  stat_summary(fun.data=mean_se, geom="errorbar")
+```
+
+## Coords
+
+Ejemplo 8: De qué editorial son los héroes?
+
+```{r}
+ggplot(df, aes(Publisher)) + 
+  geom_bar(stat = "count")
+
+ggplot(df, aes(Publisher)) + 
+  geom_bar(stat = "count") +
+  coord_flip()
+
+```
+
+## Facet
+
+Ejemplo 9: Distribución de color de ojos según raza y género?
+
+```{r}
+
+eyes <- c("yellow", "blue", "brown", "red", "green", "black")
+df <- subset(df, Eye.color %in% eyes)
+
+ggplot(df, aes(Gender, Race)) +
+  geom_jitter(aes(color=interaction(Gender, Race)),
+               alpha=0.5)+
+  scale_x_discrete(labels=c("-", "F", "M")) + 
+  scale_color_brewer(palette = "Set2") +
+  xlab("Género")+
+  ylab("Raza")+
+  ggtitle("Color de ojos por raza y género") +
+  facet_wrap(~Eye.color)
+```
+
+## Theme
+
+```{r}
+ggplot(df,
+       aes(Gender, Height, fill = Race))+
+  geom_boxplot() + 
+  scale_fill_brewer(palette="Pastel1", 
+                     name="Raza") +
+  scale_y_continuous(name="Altura (cm)",
+                     limits=c(0,900)) +
+  xlab("Género") + 
+  theme_minimal()
+  
+ggplot(df,
+       aes(Gender, Height, fill = Race))+
+  geom_boxplot() + 
+  scale_fill_brewer(palette="Pastel1", 
+                     name="Raza") +
+  scale_y_continuous(name="Altura (cm)",
+                     limits=c(0,900)) +
+  xlab("Género") + 
+  theme_dark()
+
+ggplot(df,
+       aes(Gender, Height, fill = Race))+
+  geom_boxplot() + 
+  scale_fill_brewer(palette="Pastel1", 
+                     name="Raza") +
+  scale_y_continuous(name="Altura (cm)",
+                     limits=c(0,900)) +
+  xlab("Género") + 
+  theme_classic()
+
+ggplot(df, aes(Gender, Race)) +
+  geom_jitter(aes(color=interaction(Gender, Race)),
+               alpha=0.5)+
+  scale_x_discrete(labels=c("-", "F", "M")) + 
+  scale_color_brewer(palette = "Set2") +
+  xlab("Género")+
+  ylab("Raza")+
+  ggtitle("Color de ojos por raza y género") +
+  facet_wrap(~Eye.color) + 
+  theme(legend.position = "none", 
+        panel.background=element_rect(fill="white"),
+        panel.grid.major.x = element_blank() ,
+        panel.grid.major.y = element_line(size = 0.3, linetype = 'dotted',
+                            colour = "black"),
+        axis.line.x=element_line(size=0.5),
+        axis.line.y=element_line(color = "white"),
+        axis.text=element_text(size=10, colour = "black"),
+        axis.title=element_text(size=12), 
+        plot.title = element_text(hjust = .5), 
+        axis.ticks = element_blank())
+
+```
+
+# Extras
+
+## cowplot
+
+```{r}
+# install.packages("cowplot")
+library(cowplot)
+
+p1 <- ggplot(df,
+       aes(Gender, Height, fill = Race))+
+  geom_boxplot() + 
+  scale_fill_brewer(palette="Pastel1", 
+                     name="Raza") +
+  scale_y_continuous(name="Altura (cm)",
+                     limits=c(0,900)) +
+  xlab("Género") + 
+  theme(legend.position = "none", 
+        axis.text.x=element_text(angle=0, hjust=1),
+        axis.text.y=element_text(hjust=0, vjust = 0.5),
+        panel.background=element_rect(fill="white"),
+        axis.line.x=element_line(size=0.5),
+        axis.line.y=element_line(color = "white"),
+        axis.text=element_text(size=10, colour = "black"),
+        axis.title=element_text(size=12), 
+        plot.title = element_text(hjust = .5), 
+        axis.ticks = element_blank())
+
+  
+p2 <- ggplot(df,
+       aes(Gender, Weight, fill = Race))+
+  geom_boxplot() + 
+  scale_fill_brewer(palette="Pastel1", 
+                     name="Raza") +
+  scale_y_continuous(name="Altura (cm)",
+                     limits=c(0,900)) +
+  xlab("Género") + 
+  theme(legend.position = "none", 
+        axis.text.x=element_text(angle=0, hjust=1),
+        axis.text.y=element_text(hjust=0, vjust = 0.5),
+        panel.background=element_rect(fill="white"),
+        axis.line.x=element_line(size=0.5),
+        axis.line.y=element_line(color = "white"),
+        axis.text=element_text(size=10, colour = "black"),
+        axis.title=element_text(size=12), 
+        plot.title = element_text(hjust = .5), 
+        axis.ticks = element_blank())
+
+
+cowplot::plot_grid(p1,p2, labels = "AUTO")
+```
+
+## ggiraph
+
+```{r}
+library(ggiraph)
+g <- ggplot(df, aes(x = Weight, y = Height, color = Race))
+  
+my_gg <- g + 
+  geom_point_interactive(aes(tooltip = name), size = 1)
+  
+girafe(code = print(my_gg) )
+```
+
+## ggplotly
+
+```{r}
+library(plotly)
+
+ggplotly(ggplot(df, aes(Height, fill = (Race))) +
+  geom_density(alpha = 0.2))
+```
+
+
+
+
+
+
